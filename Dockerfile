@@ -1,30 +1,19 @@
 # Use the official lightweight Python image.
-# https://hub.docker.com/_/python
-#FROM jupyter/datascience-notebook:python-3.9.2
 FROM python:3.9-slim
-
-LABEL version="v0.1"
+LABEL version = "v0.1"
 LABEL maintainer="Simeon Thomas simeon.thomas@bedbath.com"
+WORKDIR /root
 
-# Allow statements and log messages to immediately appear in the Knative logs
-ENV PYTHONUNBUFFERED True
-
-# hardcoding port assignment so it builds in local test of docker
-ENV PORT 8080
-
-# Declare working directory, attach volume, copy requirements file to container image,
-# and install dependencies.
-ENV APP_HOME /app
-WORKDIR $APP_HOME
-COPY . ./
+# Copy files into docker image
+COPY ./requirements.txt /root/requirements.txt
+COPY ./src /root/src
+COPY ./main.py /root/main.py
 
 # Install production dependencies.
-RUN pip install -r requirements.txt
+RUN pip install -r /root/requirements.txt
 
-# Run the web service on container startup. Here we use the gunicorn
-# webserver, with one worker process and 8 threads.
-# For environments with multiple CPU cores, increase the number of workers
-# to be equal to the cores available.
-# Timeout is set to 0 to disable the timeouts of the workers to allow Cloud Run to handle instance scaling.
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
-# CMD python main.py
+# Download training data.
+RUN curl https://storage.cloud.google.com/dev_dw_npii_adhoc/analytics/LTV/data/btyd_training_data.csv --output /root/train_data.csv
+
+# Set up the entry point to invoke the trainer.
+ENTRYPOINT [ "python", "main.py" ]
